@@ -87,15 +87,17 @@ int main(void) {
   
   std::ofstream filep("particle_data.txt");
   std::ofstream filei("simulation_data.txt");
+  std::ofstream files("stepsize_curve_data.txt");
 
   // Set scientific format with enough precision
   filep.imbue(std::locale::classic());
   filei.imbue(std::locale::classic());
+  files.imbue(std::locale::classic());
   filep << std::scientific << std::setprecision(16);
   filei << std::scientific << std::setprecision(16);
+  files << std::scientific << std::setprecision(16);
 
   SchwarzschildPlane <double> core;
-  double dt = 1.0;
 
   // Set initial values computed from turning points and initial r
   // r_start = 15.0 , r_min = 8.0 , r_max = 50.0
@@ -105,18 +107,26 @@ int main(void) {
   auto E0 = core.get_E();
   auto G0 = core.get_norm();
 
+  double stepsize_curve_param = 0.1;
+
   std::vector<double> x_ref = { 1.0, 50.0, 6.28 };
   std::vector<double> u_ref = { 1.0, 0.1, 0.05 };
 
-  for (size_t i = 0; i < 1000; i++) {
+  double dtcore = stepsize_curve_param * pow(core.x[R], 1.5);
+  double dt = dtcore;
+  for (size_t i = 0; i < 10000; i++) {
     core.step_3(dt, true);
-    dt = core.suggest_stepsize_3(x_ref, u_ref, 10e-12);
+    //dt = core.suggest_stepsize_3(x_ref, u_ref, 10e-8);
+    dt = 2 * stepsize_curve_param * pow(core.x[R], 1.5) - dt;
 
     // save X,Y coordinates in Schwarzchild plane
     filep << core.x[R] * cos(core.x[P]) << " " << core.x[R] * sin(core.x[P]) << '\n';
 
-    // save invraints norm, E, L (relative to initial value) and step size length
-    filei << (core.get_norm() - G0) / G0 << " " << (core.get_E() - E0) / E0 << " " << (core.get_L() - L0) / L0 << " " << dt << '\n';
+    // save invariants  norm, E, L
+    filei << (core.get_norm() - G0) / G0 << " " << (core.get_E() - E0) / E0 << " " << (core.get_L() - L0) / L0 << '\n';
+
+    // save stepsize curve
+    files << core.x[R] << " " << dt << " " << dt / pow(core.x[R], 1.5) << '\n';
   }
 
   return 0;

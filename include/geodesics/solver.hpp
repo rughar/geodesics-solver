@@ -49,6 +49,7 @@ private:
 
   std::vector<U> x_e, u_e;                          // Used for evaluation of highest eigenvalue
 
+
 protected:
 
   size_t n;                                         // dimension
@@ -62,7 +63,7 @@ protected:
                                                     // (see below which functions require metric).
 
 public:
-
+  U omega;
   std::vector<U> x, u;                              // position, velocity
 
   // ---- integrator entry‑points --------------------------------------------
@@ -127,13 +128,14 @@ template<class U>
 inline void StormerVerletCore<U>::update_mat(const U dt)
 {
   Christoffel_symbols();
-
+  omega = 0.0;
   for (size_t i = n; i--;)
     for (size_t j = n; j--;) {
       U tmp = U(0);
       for (size_t k = n; k--;)
         tmp += Gamma[i][j][k] * u[k];
       mat[i][j] = tmp * dt + (i == j ? 1 : 0);
+      omega = std::max(omega, fabs(tmp));
     }
 }
 
