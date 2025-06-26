@@ -1,46 +1,58 @@
 ﻿# Geodesic‑type ODE Integrator
 
-> Symplectic, time‑reversible integration of systems of the form\
-> \(\ddot x^i + \Gamma^{i}_{\;jk}\,\dot x^j\dot x^k = 0\,,\qquad i=0,\dots,n-1\)\
-> Implemented in C++ as a header‑only library that couples a **Störmer–Verlet** core with higher‑order **Yoshida** compositions [[Yoshida 1990](https://doi.org/10.1016/0375-9601\(90\)90092-3)].
+A header‑only C++ library for **symplectic, time‑reversible** integration of ordinary differential equations that can be cast as a *quadratic‑in‑velocity* geodesic equation.
+
+$$
+\ddot x^i + \Gamma^{i}_{\;jk}\,\dot x^j \dot x^k = 0,\qquad i = 0,\dots,n-1 .
+$$
+
+The core algorithm is the velocity **Störmer–Verlet** step, lifted to higher orders by the 4th‑ and 6th‑order **Yoshida** compositions [[Yoshida 1990](https://doi.org/10.1016/0375-9601\(90\)90092-3)].
 
 ---
 
-## 1  Mathematical background
+## 1 Mathematical background
 
-### 1.1  Geodesic equation and its cousins
+### 1.1 Geodesic equation & related systems
 
-The second‑order autonomous system above is best known from **general relativity**, but the *algebraic structure* also covers many mechanical or field‑theory problems whose acceleration is quadratic in the velocities:
+Many seemingly unrelated problems share the geodesic algebraic structure, e.g.
 
-- **Free rigid‑body rotation** (body angular momentum expressed in principal axes)
-- **Motion in an electromagnetic field** — see § 1.2
-- **Planar Kepler motion** in *spherical* coordinates
+- **Free rigid‑body rotation** (Euler equations in principal axes),
+- **Planar Kepler motion** in *spherical* coordinates,
+- **Charged particle in an electromagnetic field** (§ 1.2).
 
-Whenever the RHS can be written as a bilinear map \(\dot u^i = -\Gamma^{i}_{\;jk} u^j u^k,\qquad u^i = \dot x^i,\) the library can integrate it without modification.
+Writing \$u^i \equiv \dot x^i\$, the first‑order form is
 
-> **Split formulation.**  With phase vector \$(x^i,u^i)\$:\
-> \(\dot x^i = u^i,\qquad \dot u^i = -\Gamma^{i}_{\;jk} u^j u^k.\)\
-> This split is **symplectic** and **time‑reversible**, hence the choice of Verlet.
+$$
+\dot x^i = u^i, \qquad \dot u^i = -\Gamma^{i}_{\;jk}\,u^j u^k.
+$$
 
-### 1.2  Electromagnetic field as a \$(n!+!1)\$‑D geodesic
+The split \$(x,u)\$ system is **symplectic** and **time‑reversible** – perfect for drift–kick–drift (Verlet) integrators.
 
-Add one auxiliary coordinate \$x^{c}\$ with \$u^{c}=1\$ and set
+### 1.2 Electromagnetic field as an \$(n!+!1)\$‑dimensional geodesic
 
-- \$\Gamma^{c}\_{;ij}=0\$  (extra dimension is cyclic)
-- \$\Gamma^{i}\_{;cc}\$ reproduces the *electric‑field* term
-- \$\Gamma^{i}\_{;ck}\$ produces the magnetic term \$q,\mathbf u\times\mathbf B\$
+Add a cyclic coordinate \$x^c\$ with fixed velocity \$u^c=1\$ and set
 
-Lorentz force = **quadratic geodesic part** + **linear correction**.  For *purely* linear Lorentz motion use the simpler, volume‑preserving **Boris leap‑frog** [[Boris 1970](https://ntrs.nasa.gov/citations/19710026052)].
+| Symbol                  | Role                                         |
+| ----------------------- | -------------------------------------------- |
+| \$\Gamma^{c}\_{;ij}=0\$ | extra dimension remains cyclic               |
+| \$\Gamma^{i}\_{;cc}\$   | electric‑field part                          |
+| \$\Gamma^{i}\_{;ck}\$   | magnetic term \$q,\mathbf u\times\mathbf B\$ |
 
-### 1.3  Norms and invariants
+The Lorentz force becomes a **quadratic** term (geodesic‑like) **plus** a *linear* correction. For purely linear Lorentz motion the classic **Boris‑Buneman** leap‑frog is simpler and volume‑preserving [[Boris 1970](https://ntrs.nasa.gov/citations/19710026052)].
 
-Monitor e.g.\
-\(g_{ij}u^i u^j = \text{const}\quad(=-1 \text{ for time‑like})\)\
-and, where applicable, specific energy \$E\$ and angular momentum \$L\$.  Helpers `get_norm()`, `get_E()`, `get_L()` are provided. fileciteturn0file0turn0file2
+### 1.3 Norms and invariants
+
+Typical invariants to monitor
+
+$$
+ g_{ij}u^i u^j = \text{const}\quad(=-1 \text{ for time‑like}),
+$$
+
+plus specific energy \$E\$ and angular momentum \$L\$ in stationary or axisymmetric metrics.
 
 ---
 
-## 2  Integrator hierarchy
+## 2 Integrator hierarchy
 
 | Order | Method                      | Entry‑point  |
 | ----- | --------------------------- | ------------ |
@@ -48,77 +60,82 @@ and, where applicable, specific energy \$E\$ and angular momentum \$L\$.  Help
 | 4     | Yoshida quartic composition | `step_2(dt)` |
 | 6     | Yoshida sextic composition  | `step_3(dt)` |
 
-`step_2` and `step_3` are thin wrappers around `step_1` with Yoshida coefficients.
+`step_2` and `step_3` are wrappers that repeatedly call `step_1` with Yoshida coefficients.
 
 ---
 
-## 3  Advanced Störmer–Verlet formulation
+## 3 Generalised Störmer–Verlet scheme
 
-### 3.1  Classic velocity‑Verlet
+### 3.1 Classic velocity‑Verlet
 
 $$
 \begin{aligned}
-\mathbf x_{1/2}&=\mathbf x_0+\tfrac{\Delta t}{2}\,\mathbf u_0,\\[4pt]
-\mathbf u_{1}&=\mathbf u_0+\Delta t\,\mathbf f(\mathbf x_{1/2},\mathbf u_0,\mathbf u_1),\\[4pt]
-\mathbf x_{1}&=\mathbf x_{1/2}+\tfrac{\Delta t}{2}\,\mathbf u_1.
+\mathbf x_{1/2} &= \mathbf x_0 + \tfrac{\Delta t}{2}\,\mathbf u_0,\\[4pt]
+\mathbf u_1 &= \mathbf u_0 + \Delta t\,\mathbf f(\mathbf x_{1/2},\mathbf u_0,\mathbf u_1),\\[4pt]
+\mathbf x_1 &= \mathbf x_{1/2} + \tfrac{\Delta t}{2}\,\mathbf u_1.
 \end{aligned}
 $$
 
-Symmetric kicks
+Time symmetry requires the kick \$\mathbf f\$ to use the same midpoint position \$\mathbf x\_{1/2}\$. Define two symmetric choices
 
 $$
-\mathbf f_A=\ddot{\mathbf x}(\mathbf x_{1/2},(\mathbf u_0+\mathbf u_1)/2),\qquad
-\mathbf f_B=\tfrac12[\ddot{\mathbf x}(\mathbf x_{1/2},\mathbf u_0)+\ddot{\mathbf x}(\mathbf x_{1/2},\mathbf u_1)].
+\begin{aligned}
+\mathbf f_A &= \ddot{\mathbf x}\bigl(\mathbf x_{1/2},\tfrac12(\mathbf u_0+\mathbf u_1)\bigr),\\[4pt]
+\mathbf f_B &= \tfrac12\Bigl[\ddot{\mathbf x}(\mathbf x_{1/2},\mathbf u_0)+\ddot{\mathbf x}(\mathbf x_{1/2},\mathbf u_1)\Bigr].
+\end{aligned}
 $$
 
-Take\
-\(\boxed{\mathbf f=2\mathbf f_A-\mathbf f_B}\) so that for geodesics\
-\$ f^i=-\Gamma^{i}\_{;jk}u\_0^{,j}u\_1^{,k}\$.
+Choose a linear combination that annihilates the quadratic dependence on \$\mathbf u\_1\$
 
-Resulting step
+\(\boxed{\mathbf f = 2\,\mathbf f_A - \mathbf f_B}.\)
+
+For geodesic acceleration this becomes
+
+\(f^i = -\Gamma^{i}_{\;jk}\,u_0^{\,j} u_1^{\,k},\)
+
+leading to
 
 $$
-\boxed{\begin{aligned}
- x_{1/2}^i &= x_0^i+\frac{\Delta t}{2}u_0^i,\\[6pt]
- u_1^i &= u_0^i-\Delta t\,\Gamma^{i}_{\;jk}u_0^{\,j}u_1^{\,k},\\[6pt]
- x_1^i &= x_{1/2}^i+\frac{\Delta t}{2}u_1^i
-\end{aligned}}
+\begin{aligned}
+ x_{1/2}^i &= x_0^i + \frac{\Delta t}{2}u_0^i,\\[6pt]
+ u_1^i &= u_0^i - \Delta t\,\Gamma^{i}_{\;jk}\,u_0^{\,j}u_1^{\,k},\\[6pt]
+ x_1^i &= x_{1/2}^i + \frac{\Delta t}{2}u_1^i.
+\end{aligned}
 $$
 
-— implicit but **linear** in \$u\_1\$.
+Only **linear** in the unknown \$u\_1\$ → one LU solve per step.
 
-### 3.2  LU solve per step
+### 3.2 Matrix form
 
-Linear form\
-\(\mathbf u_1=(\mathbf I+\Delta t\,\Gamma(\mathbf u_0))^{-1}\,\mathbf u_0,\;\Gamma(\mathbf u_0)^{i}{}_{k}=\Gamma^{i}_{\;jk}u_0^{\,j}.\)\
-`StormerVerletCore` LU‑factorises this \$n\times n\$ matrix once per step (\$\mathcal O(n^3)\$).
+$$
+\mathbf u_1 = \bigl(\mathbf I + \Delta t\,\Gamma(\mathbf u_0)\bigr)^{-1} \mathbf u_0,\qquad (\Gamma(\mathbf u_0))^{i}{}_{k} = \Gamma^{i}_{\;jk}u_0^{\,j}.
+$$
+
+Complexity per step: \$\mathcal O(n^3)\$.
 
 ---
 
-## 4  Adaptive step‑size strategy
+## 4 Adaptive step‑size workflow
 
-### 4.1  Why universal controllers fail
+Estimate stiffness via the largest eigenvalue \$\lambda\_{\max}\$ of the Jacobian \$J\$:
 
-Reversibility demands a **palindromic** step list; classic PID or embedded‑RK controllers violate this and leak invariants.
+\(h \approx \frac{1}{\lambda_{\max}}, \qquad \Delta t_{\text{new}} = 2h - \Delta t_{\text{old}}.\)
 
-### 4.2  Eigenvalue‑based heuristic
-
-For Jacobian \$J\$:\
-\(f\approx1/\lambda_{\max},\qquad \Delta t_{\text{new}}=2f-\Delta t_{\text{old}}.\) `StormerVerletCore` provides quick asymmetric probes:
+Because the same \$h\$ is reused in both halves of the drift‑kick‑drift palindrome, reversibility is preserved. Quick asymmetric suggestions are available:
 
 ```cpp
-suggest_stepsize_k(x_ref,u_ref,tol); // k = 1,2,3
+suggest_stepsize_k(x_ref, u_ref, tol);  // k = 1,2,3
 ```
 
-### 4.3  Recommended workflow
+**Typical workflow**
 
-1. **Probe run** — call `step_3(dt,true)` and log the suggested `dt`s.
-2. **Fit** an empirical map \$(\mathbf x,\mathbf u)\mapsto f\$.
-3. **Production run** — feed that \$f\$ into the symmetric update formula; long‑term drifts disappear while stiff zones still adapt.
+1. **Probe run** – `step_3(dt,true)`; record suggested \$\Delta t\$.
+2. **Fit** – build \$(\mathbf x,\mathbf u) \mapsto f\$.
+3. **Production run** – use that map in the symmetric update above.
 
 ---
 
-## 5  Quick start — Euler’s rigid‑body equations
+## 5 Quick start – Euler rigid‑body with constant torque
 
 ```cpp
 #include <geodesics/solver.hpp>
@@ -126,47 +143,36 @@ suggest_stepsize_k(x_ref,u_ref,tol); // k = 1,2,3
 #include <fstream>
 
 struct RigidBody : public StormerVerletCore<double> {
-  std::array<double,3> I{2.0,1.0,0.5};
-  std::array<double,3> M{0.0,0.0,0.1};
+  std::array<double,3> I{2.0, 1.0, 0.5};  // principal moments
+  std::array<double,3> M{0.0, 0.0, 0.1};  // constant body torque
 
-  RigidBody(){ set_dimension(4); }
+  RigidBody() { set_dimension(4); }
 
   void Christoffel_symbols() override {
     // quadratic ω×Iω terms
-    Gamma[idx(1,2,3)]=Gamma[idx(1,3,2)]=-(I[1]-I[2])/(2*I[0]);
-    Gamma[idx(2,3,1)]=Gamma[idx(2,1,3)]=-(I[2]-I[0])/(2*I[1]);
-    Gamma[idx(3,1,2)]=Gamma[idx(3,2,1)]=-(I[0]-I[1])/(2*I[2]);
+    Gamma[idx(1,2,3)] = Gamma[idx(1,3,2)] = -(I[1]-I[2])/(2*I[0]);
+    Gamma[idx(2,3,1)] = Gamma[idx(2,1,3)] = -(I[2]-I[0])/(2*I[1]);
+    Gamma[idx(3,1,2)] = Gamma[idx(3,2,1)] = -(I[0]-I[1])/(2*I[2]);
     // constant torque via u^0
-    Gamma[idx(1,0,0)]=-M[0]/I[0];
-    Gamma[idx(2,0,0)]=-M[1]/I[1];
-    Gamma[idx(3,0,0)]=-M[2]/I[2];
+        Gamma[idx(1,0,0)] = -M[0]/I[0];
+    Gamma[idx(2,0,0)] = -M[1]/I[1];
+    Gamma[idx(3,0,0)] = -M[2]/I[2];
   }
-  static constexpr size_t idx(int i,int j,int k){ return 16*i+4*j+k; }
+  static constexpr size_t idx(int i,int j,int k){ return 16*i + 4*j + k; }
 };
 
 int main(){
   RigidBody rb;
-  rb.u={1.0,0.3,0.4,9.0}; // u^0=1 keeps torque active
-  rb.x.assign(4,0.0);
+  rb.u = {1.0, 0.3, 0.4, 9.0};   // u^0 = 1 keeps torque active
+  rb.x.assign(4, 0.0);
 
   std::ofstream log("omega.txt");
-  double dt=1e-2;
-  for(size_t n=0;n<500;++n){
-    log<<rb.u[1]<<' '<<rb.u[2]<<' '<<rb.u[3]<<'\n';
+  const double dt = 1.0e-2;
+  for(size_t n = 0; n < 500; ++n){
+    log << rb.u[1] << ' ' << rb.u[2] << ' ' << rb.u[3] << '
+';
     rb.step_3(dt);
   }
 }
 ```
-
----
-
-## 6  Limitations & future work
-
-- No event detection (periapsis, horizon crossing, …)
-- LU without pivoting — safe only if \$(\mathbf I+\Delta t,\Gamma u)\$ is diagonally dominant. fileciteturn0file1
-- Currently single‑threaded; integrations are embarrassingly parallel.
-
----
-
-© 2025 — MIT Licence.  Contributions welcome!
 
