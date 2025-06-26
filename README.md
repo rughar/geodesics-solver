@@ -143,22 +143,23 @@ suggest_stepsize_k(x_ref, u_ref, tol);  // k = 1,2,3
 #include <fstream>
 
 struct RigidBody : public StormerVerletCore<double> {
-  std::array<double,3> I{2.0, 1.0, 0.5};  // principal moments
-  std::array<double,3> M{0.0, 0.0, 0.1};  // constant body torque
+  using base = StormerVerletCore<U>;
+  
+  std::array<double, 3> I{ 2.0, 1.0, 0.5 };  // principal moments
+  std::array<double, 3> M{ 0.0, 0.0, 0.1 };  // constant body torque
 
   RigidBody() { set_dimension(4); }
 
   void Christoffel_symbols() override {
     // quadratic ω×Iω terms
-    Gamma[idx(1,2,3)] = Gamma[idx(1,3,2)] = -(I[1]-I[2])/(2*I[0]);
-    Gamma[idx(2,3,1)] = Gamma[idx(2,1,3)] = -(I[2]-I[0])/(2*I[1]);
-    Gamma[idx(3,1,2)] = Gamma[idx(3,2,1)] = -(I[0]-I[1])/(2*I[2]);
+    base::Gamma[1][2][3] = Gamma[1][2][3] = -(I[1] - I[2]) / (2 * I[0]);
+    base::Gamma[2][3][1] = Gamma[2][3][1] = -(I[2] - I[0]) / (2 * I[1]);
+    base::Gamma[3][1][2] = Gamma[3][1][2] = -(I[0] - I[1]) / (2 * I[2]);
     // constant torque via u^0
-    Gamma[idx(1,0,0)] = -M[0]/I[0];
-    Gamma[idx(2,0,0)] = -M[1]/I[1];
-    Gamma[idx(3,0,0)] = -M[2]/I[2];
+    base::Gamma[1][0][0] = -M[0] / I[0];
+    base::Gamma[2][0][0] = -M[1] / I[1];
+    base::Gamma[3][0][0] = -M[2] / I[2];
   }
-  static constexpr size_t idx(int i,int j,int k){ return 16*i + 4*j + k; }
 };
 
 int main(){
@@ -172,6 +173,7 @@ int main(){
     log << rb.u[1] << ' ' << rb.u[2] << ' ' << rb.u[3] << '\n';
     rb.step_3(dt);
   }
+  return 0;
 }
 ```
 
