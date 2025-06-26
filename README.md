@@ -130,7 +130,7 @@ suggest_stepsize_k(x_ref, u_ref, tol);  // k = 1,2,3
 **Typical workflow**
 
 1. **Probe run** – `step_3(dt,true)`; record suggested \$\Delta t\$.
-2. **Fit** – build \$(\mathbf x,\mathbf u) \mapsto f\$.
+2. **Fit** – build \$(\mathbf x,\mathbf u) \mapsto \Delta t\$.
 3. **Production run** – use that map in the symmetric update above.
 
 ---
