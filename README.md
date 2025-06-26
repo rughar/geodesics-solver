@@ -152,9 +152,9 @@ struct RigidBody : public StormerVerletCore<double> {
 
   void Christoffel_symbols() override {
     // quadratic ω×Iω terms
-    base::Gamma[1][2][3] = Gamma[1][3][2] = -(I[1] - I[2]) / (2 * I[0]);
-    base::Gamma[2][3][1] = Gamma[2][1][3] = -(I[2] - I[0]) / (2 * I[1]);
-    base::Gamma[3][1][2] = Gamma[3][2][1] = -(I[0] - I[1]) / (2 * I[2]);
+    base::Gamma[1][2][3] = base::Gamma[1][3][2] = -(I[1] - I[2]) / (2 * I[0]);
+    base::Gamma[2][3][1] = base::Gamma[2][1][3] = -(I[2] - I[0]) / (2 * I[1]);
+    base::Gamma[3][1][2] = base::Gamma[3][2][1] = -(I[0] - I[1]) / (2 * I[2]);
     // constant torque via u^0
     base::Gamma[1][0][0] = -M[0] / I[0];
     base::Gamma[2][0][0] = -M[1] / I[1];
