@@ -169,8 +169,7 @@ int main(){
   std::ofstream log("omega.txt");
   const double dt = 1.0e-2;
   for(size_t n = 0; n < 500; ++n){
-    log << rb.u[1] << ' ' << rb.u[2] << ' ' << rb.u[3] << '
-';
+    log << rb.u[1] << ' ' << rb.u[2] << ' ' << rb.u[3] << '\n';
     rb.step_3(dt);
   }
 }
