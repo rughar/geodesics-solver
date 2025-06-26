@@ -3,7 +3,7 @@
 A header‑only C++ library for **symplectic, time‑reversible** integration of ordinary differential equations that can be cast as a *quadratic‑in‑velocity* geodesic equation.
 
 $$
-\ddot x^i + \Gamma^{i}_{\;jk}\,\dot x^j \dot x^k = 0,\qquad i = 0,\dots,n-1 .
+\ddot x^i + {\Gamma^{i}}_{jk}\\dot x^j \dot x^k = 0,\qquad i = 0,\dots,n-1 .
 $$
 
 The core algorithm is the velocity **Störmer–Verlet** step, lifted to higher orders by the 4th‑ and 6th‑order **Yoshida** compositions [[Yoshida 1990](https://doi.org/10.1016/0375-9601\(90\)90092-3)].
@@ -23,20 +23,20 @@ Many seemingly unrelated problems share the geodesic algebraic structure, e.g.
 Writing \$u^i \equiv \dot x^i\$, the first‑order form is
 
 $$
-\dot x^i = u^i, \qquad \dot u^i = -\Gamma^{i}_{\;jk}\,u^j u^k.
+\dot x^i = u^i, \qquad \dot u^i = -{\Gamma^{i}}_{jk}u^j u^k.
 $$
 
 The split \$(x,u)\$ system is **symplectic** and **time‑reversible** – perfect for drift–kick–drift (Verlet) integrators.
 
-### 1.2 Electromagnetic field as an \$(n!+!1)\$‑dimensional geodesic
+### 1.2 Electromagnetic field as an \$(n+1)\$‑dimensional geodesic
 
 Add a cyclic coordinate \$x^c\$ with fixed velocity \$u^c=1\$ and set
 
 | Symbol                  | Role                                         |
 | ----------------------- | -------------------------------------------- |
-| \$\Gamma^{c}\_{;ij}=0\$ | extra dimension remains cyclic               |
-| \$\Gamma^{i}\_{;cc}\$   | electric‑field part                          |
-| \$\Gamma^{i}\_{;ck}\$   | magnetic term \$q,\mathbf u\times\mathbf B\$ |
+| \${\Gamma^{c}}_{ij}=0\$ | extra dimension remains cyclic               |
+| \${\Gamma^{i}}_{cc}\$   | electric‑field part                          |
+| \${\Gamma^{i}}_{ck}\$   | magnetic term \$q,\mathbf u\times\mathbf B\$ |
 
 The Lorentz force becomes a **quadratic** term (geodesic‑like) **plus** a *linear* correction. For purely linear Lorentz motion the classic **Boris‑Buneman** leap‑frog is simpler and volume‑preserving [[Boris 1970](https://ntrs.nasa.gov/citations/19710026052)].
 
@@ -70,8 +70,8 @@ plus specific energy \$E\$ and angular momentum \$L\$ in stationary or axisymmet
 
 $$
 \begin{aligned}
-\mathbf x_{1/2} &= \mathbf x_0 + \tfrac{\Delta t}{2}\,\mathbf u_0,\\[4pt]
-\mathbf u_1 &= \mathbf u_0 + \Delta t\,\mathbf f(\mathbf x_{1/2},\mathbf u_0,\mathbf u_1),\\[4pt]
+\mathbf x_{1/2} &= \mathbf x_0 + \tfrac{\Delta t}{2}\\mathbf u_0,\\
+\mathbf u_1 &= \mathbf u_0 + \Delta t \mathbf f(\mathbf x_{1/2},\mathbf u_0,\mathbf u_1),\\
 \mathbf x_1 &= \mathbf x_{1/2} + \tfrac{\Delta t}{2}\,\mathbf u_1.
 \end{aligned}
 $$
@@ -80,38 +80,36 @@ Time symmetry requires the kick \$\mathbf f\$ to use the same midpoint position 
 
 $$
 \begin{aligned}
-\mathbf f_A &= \ddot{\mathbf x}\bigl(\mathbf x_{1/2},\tfrac12(\mathbf u_0+\mathbf u_1)\bigr),\\[4pt]
+\mathbf f_A &= \ddot{\mathbf x}\bigl(\mathbf x_{1/2},\tfrac12(\mathbf u_0+\mathbf u_1)\bigr),\\
 \mathbf f_B &= \tfrac12\Bigl[\ddot{\mathbf x}(\mathbf x_{1/2},\mathbf u_0)+\ddot{\mathbf x}(\mathbf x_{1/2},\mathbf u_1)\Bigr].
 \end{aligned}
 $$
 
 Choose a linear combination that annihilates the quadratic dependence on \$\mathbf u\_1\$
 
-\(\boxed{\mathbf f = 2\,\mathbf f_A - \mathbf f_B}.\)
+$$
+ \mathbf f = 2\mathbf f_A - \mathbf f_B.
+$$
 
 For geodesic acceleration this becomes
 
-\(f^i = -\Gamma^{i}_{\;jk}\,u_0^{\,j} u_1^{\,k},\)
+$$
+f^i = -{\Gamma^{i}}_{jk} u_0^{j} u_1^{k}
+$$
 
 leading to
 
 $$
+\boxed{%
 \begin{aligned}
- x_{1/2}^i &= x_0^i + \frac{\Delta t}{2}u_0^i,\\[6pt]
- u_1^i &= u_0^i - \Delta t\,\Gamma^{i}_{\;jk}\,u_0^{\,j}u_1^{\,k},\\[6pt]
- x_1^i &= x_{1/2}^i + \frac{\Delta t}{2}u_1^i.
+\mathbf x_{1/2} &= \mathbf x_0 + \tfrac{\Delta t}{2}\\mathbf u_0,\\
+\mathbf u_1 &= \mathbf u_0 + \Delta t \Gamma^i_{jk} u_0^{j} u_1^{k} ,\\
+\mathbf x_1 &= \mathbf x_{1/2} + \tfrac{\Delta t}{2}\,\mathbf u_1.
 \end{aligned}
+}
 $$
 
-Only **linear** in the unknown \$u\_1\$ → one LU solve per step.
-
-### 3.2 Matrix form
-
-$$
-\mathbf u_1 = \bigl(\mathbf I + \Delta t\,\Gamma(\mathbf u_0)\bigr)^{-1} \mathbf u_0,\qquad (\Gamma(\mathbf u_0))^{i}{}_{k} = \Gamma^{i}_{\;jk}u_0^{\,j}.
-$$
-
-Complexity per step: \$\mathcal O(n^3)\$.
+Only **linear** in the unknown \$u\_1\$ → one LU solve per step. Complexity per step: \$\mathcal O(n^3)\$.
 
 ---
 
@@ -119,7 +117,9 @@ Complexity per step: \$\mathcal O(n^3)\$.
 
 Estimate stiffness via the largest eigenvalue \$\lambda\_{\max}\$ of the Jacobian \$J\$:
 
-\(h \approx \frac{1}{\lambda_{\max}}, \qquad \Delta t_{\text{new}} = 2h - \Delta t_{\text{old}}.\)
+$$
+h \approx \frac{1}{\lambda_{\max}}, \qquad \Delta t_{\text{new}} = 2h - \Delta t_{\text{old}}.
+$$
 
 Because the same \$h\$ is reused in both halves of the drift‑kick‑drift palindrome, reversibility is preserved. Quick asymmetric suggestions are available:
 
@@ -154,7 +154,7 @@ struct RigidBody : public StormerVerletCore<double> {
     Gamma[idx(2,3,1)] = Gamma[idx(2,1,3)] = -(I[2]-I[0])/(2*I[1]);
     Gamma[idx(3,1,2)] = Gamma[idx(3,2,1)] = -(I[0]-I[1])/(2*I[2]);
     // constant torque via u^0
-        Gamma[idx(1,0,0)] = -M[0]/I[0];
+    Gamma[idx(1,0,0)] = -M[0]/I[0];
     Gamma[idx(2,0,0)] = -M[1]/I[1];
     Gamma[idx(3,0,0)] = -M[2]/I[2];
   }
