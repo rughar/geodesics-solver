@@ -107,17 +107,22 @@ int main(void) {
   auto E0 = core.get_E();
   auto G0 = core.get_norm();
 
-  double stepsize_curve_param = 0.1;
+  double stepsize_curve_param = 0.45;
 
   std::vector<double> x_ref = { 1.0, 50.0, 6.28 };
   std::vector<double> u_ref = { 1.0, 0.1, 0.05 };
 
-  double dtcore = stepsize_curve_param * pow(core.x[R], 1.5);
+  double dtcore = stepsize_curve_param * core.x[R];
   double dt = dtcore;
-  for (size_t i = 0; i < 10000; i++) {
+  core.step_1(dt);
+  dtcore = (dtcore + stepsize_curve_param * core.x[R]);
+  core.step_1(-dt);
+  dt = dtcore / 2;
+
+  for (size_t i = 0; i < 250; i++) {
     core.step_3(dt, true);
     //dt = core.suggest_stepsize_3(x_ref, u_ref, 10e-8);
-    dt = 2 * stepsize_curve_param * pow(core.x[R], 1.5) - dt;
+    dt = 2 * stepsize_curve_param * core.x[R] - dt;
 
     // save X,Y coordinates in Schwarzchild plane
     filep << core.x[R] * cos(core.x[P]) << " " << core.x[R] * sin(core.x[P]) << '\n';
@@ -126,7 +131,7 @@ int main(void) {
     filei << (core.get_norm() - G0) / G0 << " " << (core.get_E() - E0) / E0 << " " << (core.get_L() - L0) / L0 << '\n';
 
     // save stepsize curve
-    files << core.x[R] << " " << dt << " " << dt / pow(core.x[R], 1.5) << '\n';
+    files << core.x[R] << " " << dt << " " << dt / core.x[R] << '\n';
   }
 
   return 0;
