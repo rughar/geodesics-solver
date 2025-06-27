@@ -165,7 +165,7 @@ struct RigidBody : public StormerVerletCore<double> {
 int main() {
   RigidBody rb;
   rb.u = { 1.0, 0.3, 0.4, 9.0 };   // u^0 = 1 keeps torque active
-  rb.x.assign(4, 0.0);
+  rb.x = { 0.0, 0.0, 0.0, 0.0 };   // Initial positions (not used in this example)
 
   std::ofstream log("omega.txt");
   const double dt = 1.0e-2;
