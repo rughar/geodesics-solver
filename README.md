@@ -3,7 +3,7 @@
 A header‑only C++ library for **symplectic, time‑reversible** integration of ordinary differential equations that can be cast as a *quadratic‑in‑velocity* geodesic equation.
 
 $$
-\ddot x^i + {\Gamma^{i}}_{jk}\\dot x^j \dot x^k = 0,\qquad i = 0,\dots,n-1 .
+\ddot x^i + {\Gamma^{i}}_{jk}(x)\\dot x^j \dot x^k = 0,\qquad i = 0,\dots,n-1 .
 $$
 
 The core algorithm is the velocity **Störmer–Verlet** step, lifted to higher orders by the 4th and 6th‑order **Yoshida** compositions [[Yoshida 1990](https://doi.org/10.1016/0375-9601\(90\)90092-3)].
