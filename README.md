@@ -3,10 +3,10 @@
 A header‑only C++ library for **symplectic, time‑reversible** integration of ordinary differential equations that can be cast as a *quadratic‑in‑velocity* geodesic equation.
 
 $$
-\ddot x^i + {\Gamma^{i}}_{jk}\\dot x^j \dot x^k = 0,\qquad i = 0,\dots,n-1 .
+\ddot x^i + {\Gamma^{i}}_{jk}(x)\\dot x^j \dot x^k = 0,\qquad i = 0,\dots,n-1 .
 $$
 
-The core algorithm is the velocity **Störmer–Verlet** step, lifted to higher orders by the 4th‑ and 6th‑order **Yoshida** compositions [[Yoshida 1990](https://doi.org/10.1016/0375-9601\(90\)90092-3)].
+The core algorithm is the velocity **Störmer–Verlet** step, lifted to higher orders by the 4th and 6th‑order **Yoshida** compositions [[Yoshida 1990](https://doi.org/10.1016/0375-9601\(90\)90092-3)].
 
 ---
 
@@ -34,11 +34,11 @@ Add a cyclic coordinate \$x^c\$ with fixed velocity \$u^c=1\$ and set
 
 | Symbol                  | Role                                         |
 | ----------------------- | -------------------------------------------- |
-| \${\Gamma^{c}}_{ij}=0\$ | extra dimension remains cyclic               |
+| \${\Gamma^{c}}_{ij}=0\$ | extra dimension remains unchanged            |
 | \${\Gamma^{i}}_{cc}\$   | electric‑field part                          |
-| \${\Gamma^{i}}_{ck}\$   | magnetic term \$q,\mathbf u\times\mathbf B\$ |
+| \${\Gamma^{i}}_{ck}\$   | magnetic term \$\mathbf u\times\mathbf B\$   |
 
-The Lorentz force becomes a **quadratic** term (geodesic‑like) **plus** a *linear* correction. For purely linear Lorentz motion the classic **Boris‑Buneman** leap‑frog is simpler and volume‑preserving [[Boris 1970](https://ntrs.nasa.gov/citations/19710026052)].
+For purely linear Lorentz motion the classic **Boris** leap‑frog is simpler [[Boris](https://www.sciencedirect.com/science/article/abs/pii/0375960190900923)]. This section demonstrates how to include Lorentz force into the system with possibly additional **quadratic** term (geodesic‑like) correction, eg. geodesic equation for particle in additional electromagnetic field.
 
 ### 1.3 Norms and invariants
 
@@ -72,11 +72,11 @@ $$
 \begin{aligned}
 \mathbf x_{1/2} &= \mathbf x_0 + \tfrac{\Delta t}{2}\\mathbf u_0,\\
 \mathbf u_1 &= \mathbf u_0 + \Delta t \mathbf f(\mathbf x_{1/2},\mathbf u_0,\mathbf u_1),\\
-\mathbf x_1 &= \mathbf x_{1/2} + \tfrac{\Delta t}{2}\,\mathbf u_1.
+\mathbf x_1 &= \mathbf x_{1/2} + \tfrac{\Delta t}{2}\\mathbf u_1.
 \end{aligned}
 $$
 
-Time symmetry requires the kick \$\mathbf f\$ to use the same midpoint position \$\mathbf x\_{1/2}\$. Define two symmetric choices
+Time symmetry requires the kick \$\mathbf f\$ to use the same midpoint position \$\mathbf x\_{1/2}\$. The choise of velocity dependence between \$\mathbf u_0\$ and \$\mathbf u_1\$ may vary. For symmetric scheme we have two common choices
 
 $$
 \begin{aligned}
@@ -103,8 +103,8 @@ $$
 \boxed{%
 \begin{aligned}
 \mathbf x_{1/2} &= \mathbf x_0 + \tfrac{\Delta t}{2}\\mathbf u_0,\\
-\mathbf u_1 &= \mathbf u_0 + \Delta t \Gamma^i_{jk} u_0^{j} u_1^{k} ,\\
-\mathbf x_1 &= \mathbf x_{1/2} + \tfrac{\Delta t}{2}\,\mathbf u_1.
+\mathbf u_1 &= \mathbf u_0 - \Delta t \Gamma^i_{jk} u_0^{j} u_1^{k} ,\\
+\mathbf x_1 &= \mathbf x_{1/2} + \tfrac{\Delta t}{2}\\mathbf u_1.
 \end{aligned}
 }
 $$
@@ -121,16 +121,16 @@ $$
 h \approx \frac{1}{\lambda_{\max}}, \qquad \Delta t_{\text{new}} = 2h - \Delta t_{\text{old}}.
 $$
 
-Because the same \$h\$ is reused in both halves of the drift‑kick‑drift palindrome, reversibility is preserved. Quick asymmetric suggestions are available:
+Because the same \$h\$ is reused in both halves of the drift‑kick‑drift palindrome, reversibility is preserved. Our solver itselef contains fast (however non symmetry perserving) method for suggesting stepsize:
 
 ```cpp
-suggest_stepsize_k(x_ref, u_ref, tol);  // k = 1,2,3
+suggest_stepsize_*(x_ref, u_ref, tol);  // * = 1,2,3
 ```
 
 **Typical workflow**
 
-1. **Probe run** – `step_3(dt,true)`; record suggested \$\Delta t\$.
-2. **Fit** – build \$(\mathbf x,\mathbf u) \mapsto f\$.
+1. **Probe run** – `step_3(dt,true)`; record suggested \$\Delta t\$ via `suggest_stepsize_*(...)` subroutine.
+2. **Fit** – build \$(\mathbf x,\mathbf u) \mapsto \Delta t\$.
 3. **Production run** – use that map in the symmetric update above.
 
 ---
@@ -143,8 +143,8 @@ suggest_stepsize_k(x_ref, u_ref, tol);  // k = 1,2,3
 #include <fstream>
 
 struct RigidBody : public StormerVerletCore<double> {
-  using base = StormerVerletCore<U>;
-  
+  using base = StormerVerletCore<double>;
+
   std::array<double, 3> I{ 2.0, 1.0, 0.5 };  // principal moments
   std::array<double, 3> M{ 0.0, 0.0, 0.1 };  // constant body torque
 
@@ -162,15 +162,15 @@ struct RigidBody : public StormerVerletCore<double> {
   }
 };
 
-int main(){
+int main() {
   RigidBody rb;
-  rb.u = {1.0, 0.3, 0.4, 9.0};   // u^0 = 1 keeps torque active
-  rb.x.assign(4, 0.0);
+  rb.u = { 1.0, 0.3, 0.4, 9.0 };   // u^0 = 1 keeps torque active
+  rb.x = { 0.0, 0.0, 0.0, 0.0 };   // Initial positions
 
-  std::ofstream log("omega.txt");
+  std::ofstream out("omega.txt");
   const double dt = 1.0e-2;
-  for(size_t n = 0; n < 500; ++n){
-    log << rb.u[1] << ' ' << rb.u[2] << ' ' << rb.u[3] << '\n';
+  for (size_t n = 0; n < 500; ++n) {
+    out << rb.u[1] << ' ' << rb.u[2] << ' ' << rb.u[3] << '\n';
     rb.step_3(dt);
   }
   return 0;
