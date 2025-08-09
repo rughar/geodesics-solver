@@ -1,4 +1,4 @@
-#include <geodesics/solver.hpp>
+﻿#include <geodesics/solver.hpp>
 #include <iostream>
 #include <iomanip>   // std::scientific, std::setprecision
 #include <fstream>
@@ -17,11 +17,11 @@ private:
 
   using base = StormerVerletCore<U>;
   
-  // Optional override. Default is Minkowski (-1,1,1,...)
+  // Optional override. Default is Euler metric diag(1,1,1,...)
   // Define metric coefficents from position coordinates.
-  // In our case it is needed for functions get_norm, get_L, get_U, set_from_turning_points
+  // It is used for suggest_stepsize
   // and metric coefficents are also used in Christoffel_symbols.
-  void metric()
+  void metric() override
   {
     base::g[T][T] = -1 + h / base::x[R];
     base::g[R][R] = -1 / base::g[T][T];
@@ -29,7 +29,7 @@ private:
   }
 
   // Must have override. Define all non-zero Christoffel symbols. 
-  void Christoffel_symbols() 
+  void Christoffel_symbols() override
   {
     base::check_metric();       // Call this only if you want to use metric coefficents
 
@@ -83,8 +83,8 @@ public:
 };
 
 
-int main(void) {
-  
+int main(void) 
+{  
   std::ofstream filep("particle_data.txt");
   std::ofstream filei("simulation_data.txt");
   std::ofstream files("stepsize_curve_data.txt");
@@ -105,30 +105,23 @@ int main(void) {
 
   auto L0 = core.get_L();
   auto E0 = core.get_E();
-  auto G0 = core.get_norm();
-
-  double stepsize_curve_param = 0.45;
+  auto G0 = core.dot_product(core.u, core.u);
 
   std::vector<double> x_ref = { 1.0, 50.0, 6.28 };
-  std::vector<double> u_ref = { 1.0, 0.1, 0.05 };
+  std::vector<double> u_ref = { 1.0, 0.1, 0.5 };
 
-  double dtcore = stepsize_curve_param * core.x[R];
-  double dt = dtcore;
-  core.step_1(dt);
-  dtcore = (dtcore + stepsize_curve_param * core.x[R]);
-  core.step_1(-dt);
-  dt = dtcore / 2;
+  // use _init version before first step or if previous step was artificial
+  auto dt = core.suggest_stepsize_init(0.1, 0.01);
 
-  for (size_t i = 0; i < 250; i++) {
-    core.step_3(dt, true);
-    //dt = core.suggest_stepsize_3(x_ref, u_ref, 10e-8);
-    dt = 2 * stepsize_curve_param * core.x[R] - dt;
+  for (size_t i = 0; i < 1000; i++) {
+    core.step_3(dt);
+    dt = core.suggest_stepsize(0.1, dt);
 
     // save X,Y coordinates in Schwarzchild plane
     filep << core.x[R] * cos(core.x[P]) << " " << core.x[R] * sin(core.x[P]) << '\n';
 
     // save invariants  norm, E, L
-    filei << (core.get_norm() - G0) / G0 << " " << (core.get_E() - E0) / E0 << " " << (core.get_L() - L0) / L0 << '\n';
+    filei << (core.dot_product(core.u, core.u) - G0) / G0 << " " << (core.get_E() - E0) / E0 << " " << (core.get_L() - L0) / L0 << '\n';
 
     // save stepsize curve
     files << core.x[R] << " " << dt << " " << dt / core.x[R] << '\n';
