@@ -29,10 +29,12 @@ void lu_naive(const size_t n, Um& A)
 {
   for (size_t i = 0; i < n; i++) {
     A[i][i] = 1 / A[i][i];
+    auto aii = A[i][i];
     for (size_t j = i + 1; j < n; j++) {
-      A[j][i] *= A[i][i];
+      A[j][i] *= aii;
+      auto aji = A[j][i];
       for (size_t k = i + 1; k < n; k++)
-        A[j][k] -= A[j][i] * A[i][k];
+        A[j][k] -= aji * A[i][k];
     }
   }
 }

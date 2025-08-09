@@ -18,10 +18,9 @@
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": []
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "-DCMAKE_VERBOSE_MAKEFILE=ON",
+      "inheritEnvironments": [ "msvc_x64_x64" ]
     }
   ]
 }

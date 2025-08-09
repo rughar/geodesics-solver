@@ -51,10 +51,10 @@ private:
   U get_top_eigen(const U dt);                      // estimate of highest eigenvalue   
 
 protected:
-
   size_t n;                                         // dimension
   std::vector<std::vector<U>> g;                    // metric  g_ij(x)
   std::vector<std::vector<std::vector<U>>> Gamma;   // Christoffels Gamma^i_jk
+  std::vector<U> a;
 
   // Hooks for the derived concrete spacetime --------------------------------
   void check_metric();
@@ -88,7 +88,7 @@ public:
 
 // push  — drift:  x := x + u * dt  ------------------------------------------
 template<class U>
-inline void StormerVerletCore<U>::push(const U dt)
+void StormerVerletCore<U>::push(const U dt)
 {
   for (size_t i = n; i--;)
     x[i] += u[i] * dt;
@@ -102,7 +102,7 @@ inline void StormerVerletCore<U>::push(const U dt)
 //   2. inplace LU  (O(n^3))
 //   3. solve  mat.u_{new} = u_{old}
 template<class U>
-inline void StormerVerletCore<U>::boost(const U dt)
+void StormerVerletCore<U>::boost(const U dt)
 {
   get_vel_jac();
 
@@ -116,7 +116,7 @@ inline void StormerVerletCore<U>::boost(const U dt)
 
 // ensure  g  is up‑to‑date --------------------------------------------------
 template<class U>
-inline void StormerVerletCore<U>::check_metric()
+void StormerVerletCore<U>::check_metric()
 {
   if (!metric_updated)
     metric();
@@ -125,14 +125,14 @@ inline void StormerVerletCore<U>::check_metric()
 
 // Default metric
 template<class U>
-inline void StormerVerletCore<U>::metric()
+void StormerVerletCore<U>::metric()
 {
   for (size_t i = 0; i < n; i++)
     g[i][i] = 1;
 }
 
 template<class U>
-inline void StormerVerletCore<U>::get_vel_jac()
+void StormerVerletCore<U>::get_vel_jac()
 {
   Christoffel_symbols();
   for (size_t i = n; i--;)
@@ -147,7 +147,7 @@ inline void StormerVerletCore<U>::get_vel_jac()
 // 2nd‑order velocity‑Verlet -------------------------------------------------
 //   kick‑half -> drift -> kick‑half
 template<class U>
-inline void StormerVerletCore<U>::step_1(const U dt)
+void StormerVerletCore<U>::step_1(const U dt)
 {
   push(dt / 2);
   boost(dt);
@@ -156,7 +156,7 @@ inline void StormerVerletCore<U>::step_1(const U dt)
 
 // Yoshida 4th‑order composition ---------------------------------------------
 template<class U>
-inline void StormerVerletCore<U>::step_2(const U dt)
+void StormerVerletCore<U>::step_2(const U dt)
 {
   for (int i : {0, 1, 0})
     step_1(quartic[i] * dt);
@@ -164,7 +164,7 @@ inline void StormerVerletCore<U>::step_2(const U dt)
 
 // Yoshida 6th‑order composition ---------------------------------------------
 template<class U>
-inline void StormerVerletCore<U>::step_3(const U dt)
+void StormerVerletCore<U>::step_3(const U dt)
 {
   for (int i : {0, 1, 2, 3, 2, 1, 0})
     step_1(sectic[i] * dt);
@@ -172,7 +172,7 @@ inline void StormerVerletCore<U>::step_3(const U dt)
 
 // set_dimension — allocate & zero the containers ----------------------------
 template<class U>
-inline void StormerVerletCore<U>::set_dimension(const size_t dim)
+void StormerVerletCore<U>::set_dimension(const size_t dim)
 {
   n = dim;
   metric_updated = false;
@@ -181,13 +181,14 @@ inline void StormerVerletCore<U>::set_dimension(const size_t dim)
   g.assign(n, std::vector<U>(n, U{}));
   x.assign(n, U{});
   u.assign(n, U{});
+  a.assign(n, U{});
 }
 
 // set u[i] so that g_{ij} u^i u^j = norm ------------------------------------
 //  Solves a quadratic equation in u[i].  If no real solution exists, u[i]
 //  remains unchanged.
 template<class U>
-inline void StormerVerletCore<U>::set_ui_from_metric(const size_t i, const U norm)
+void StormerVerletCore<U>::set_ui_from_metric(const size_t i, const U norm)
 {
   u[i] = 0;
   check_metric();
@@ -215,14 +216,14 @@ inline void StormerVerletCore<U>::set_ui_from_metric(const size_t i, const U nor
 }
 
 template<class U>
-inline U StormerVerletCore<U>::suggest_stepsize(const U omegadt, const U dtold)
+U StormerVerletCore<U>::suggest_stepsize(const U omegadt, const U dtold)
 {
   auto tmp = omegadt / get_top_eigen(0.1 * dtold);
   return tmp * tmp / dtold;
 }
 
 template<class U>
-inline U StormerVerletCore<U>::suggest_stepsize_init(const U omegadt, const U dtref)
+U StormerVerletCore<U>::suggest_stepsize_init(const U omegadt, const U dtref)
 {
   auto omega = get_top_eigen(dtref);
   auto dt = omegadt / omega;
@@ -234,11 +235,10 @@ inline U StormerVerletCore<U>::suggest_stepsize_init(const U omegadt, const U dt
 
 // Rough estimate of highest eigen value
 template<class U>
-inline U StormerVerletCore<U>::get_top_eigen(const U dt)
+U StormerVerletCore<U>::get_top_eigen(const U dt)
 {
   U t1 = 0;
   U t2 = 0;
-  std::vector<U> a(n);
 
   push(dt);
   get_vel_jac();
@@ -280,7 +280,7 @@ inline U StormerVerletCore<U>::get_top_eigen(const U dt)
 
 template<class U>
 template<class V1, class V2>
-inline U StormerVerletCore<U>::dot_product(const V1& a, const V2& b)
+U StormerVerletCore<U>::dot_product(const V1& a, const V2& b)
 {
   check_metric();
 

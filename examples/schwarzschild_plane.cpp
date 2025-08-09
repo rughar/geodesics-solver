@@ -1,8 +1,7 @@
 ﻿#include <geodesics/solver.hpp>
-#include <iostream>
-#include <iomanip>   // std::scientific, std::setprecision
-#include <fstream>
+#include <geodesics/ftw.hpp>
 #include <cmath>
+
 
 // Indices convention for Schwarzchild coordinates within plane (time, radius, angle)
 constexpr auto T = 0;
@@ -85,46 +84,37 @@ public:
 
 int main(void) 
 {  
-  std::ofstream filep("particle_data.txt");
-  std::ofstream filei("simulation_data.txt");
-  std::ofstream files("stepsize_curve_data.txt");
-
-  // Set scientific format with enough precision
-  filep.imbue(std::locale::classic());
-  filei.imbue(std::locale::classic());
-  files.imbue(std::locale::classic());
-  filep << std::scientific << std::setprecision(16);
-  filei << std::scientific << std::setprecision(16);
-  files << std::scientific << std::setprecision(16);
+  FastTextWriter filep("particle_data.txt");
+  FastTextWriter filei("simulation_data.txt");
+  FastTextWriter files("stepsize_curve_data.txt");
 
   SchwarzschildPlane <double> core;
 
   // Set initial values computed from turning points and initial r
   // r_start = 15.0 , r_min = 8.0 , r_max = 50.0
-  core.set_from_turning_points(15.0, 8.0, 50.0);
+  core.set_from_turning_points(8.0, 8.0, 50.0);
 
   auto L0 = core.get_L();
   auto E0 = core.get_E();
   auto G0 = core.dot_product(core.u, core.u);
 
-  std::vector<double> x_ref = { 1.0, 50.0, 6.28 };
-  std::vector<double> u_ref = { 1.0, 0.1, 0.5 };
-
   // use _init version before first step or if previous step was artificial
-  auto dt = core.suggest_stepsize_init(0.1, 0.01);
+  auto dt = core.suggest_stepsize_init(0.01, 0.01);
 
-  for (size_t i = 0; i < 1000; i++) {
+  for (size_t i = 0; i < 20000; i++) {
     core.step_3(dt);
-    dt = core.suggest_stepsize(0.1, dt);
+    dt = core.suggest_stepsize(0.01, dt);
 
-    // save X,Y coordinates in Schwarzchild plane
-    filep << core.x[R] * cos(core.x[P]) << " " << core.x[R] * sin(core.x[P]) << '\n';
+    double x = core.x[R] * std::cos(core.x[P]);
+    double y = core.x[R] * std::sin(core.x[P]);
+    filep.row(x, y);
 
-    // save invariants  norm, E, L
-    filei << (core.dot_product(core.u, core.u) - G0) / G0 << " " << (core.get_E() - E0) / E0 << " " << (core.get_L() - L0) / L0 << '\n';
+    double norm_rel = (core.dot_product(core.u, core.u) - G0) / G0;
+    double E_rel = (core.get_E() - E0) / E0;
+    double L_rel = (core.get_L() - L0) / L0;
+    filei.row(norm_rel, E_rel, L_rel);
 
-    // save stepsize curve
-    files << core.x[R] << " " << dt << " " << dt / core.x[R] << '\n';
+    files.row(core.x[R], dt);
   }
 
   return 0;
